@@ -1,0 +1,105 @@
+# 敏捷项目管理
+apiVersion:  apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: agile-impl
+  name: agile-impl
+  namespace: aido
+spec:
+  replicas: 3
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: agile-impl
+  template:
+    metadata:
+      labels:
+        app: agile-impl
+      annotations:
+        prometheus.io/path: "/req/actuator/prometheus"
+        prometheus.io/port: "8060"
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+      - image: registry.devops.cmft/agile/agile-impl:20200918-1ee24faf
+        imagePullPolicy: IfNotPresent
+        name: agile-impl
+        envFrom:
+        - configMapRef:
+            name: aido-configmap
+        env:
+        - name: MEMORY
+          value: "3000"
+        - name: HOSTNAME
+          value: agile-impl
+        resources:
+          limits:
+            cpu: "0"
+            memory: 3600Mi
+          requests:
+            cpu: "0"
+            memory: 3600Mi
+        readinessProbe:
+          tcpSocket:
+            port: 8060
+          failureThreshold: 3
+          initialDelaySeconds: 60
+        livenessProbe:
+          tcpSocket:
+            port: 8060
+          failureThreshold: 3
+          initialDelaySeconds: 90
+        volumeMounts:
+        - mountPath: /logs
+          name: log-vol
+      volumes:
+      - name: log-vol
+        nfs:
+          path: /aido_logs/agile
+          server: 10.3.60.229
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: registry-harbor
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agile-impl
+  namespace: aido
+  labels:
+    app: agile-impl
+spec:
+  ports:
+  - name: http-8060
+    port: 8060
+    protocol: TCP
+    targetPort: 8060
+  - name: http-10003
+    port: 10003
+    protocol: TCP
+    targetPort: 10003
+  selector:
+    app: agile-impl
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agile-impl
+  namespace: aido
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agile-impl
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: http_server_requests_seconds
+      target:
+        type: AverageValue
+        averageValue: 50
