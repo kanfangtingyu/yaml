@@ -27,7 +27,7 @@ spec:
           - name: CATALINA_CONNECTOR_PROXYNAME
             value: wiki.devops.cmft
           - name: CATALINA_CONNECTOR_PROXYPORT
-            value: 443
+            value: "443"
         ports:
           - containerPort: 8090
             name: web
@@ -42,14 +42,14 @@ spec:
           requests:
             cpu: 500m
             memory: 3000Mi
-      #   volumeMounts:
-      #   - name: confluence-data
-      #     mountPath: /var/atlassian/application-data/confluence 
-      # volumes:
-      # - name: confluence-data
-      #   nfs:
-      #     path: /data/confluence-repo-data
-      #     server: 10.3.60.229
+        volumeMounts:
+        - name: confluence-data
+          mountPath: /var/atlassian/application-data/confluence 
+      volumes:
+      - name: confluence-data
+        nfs:
+          path: /data/confluence-repo-data
+          server: 10.3.60.229
 ---
 apiVersion: v1
 kind: Service
